@@ -22,20 +22,28 @@ export function Navbar() {
   const [user, setUser] = useState<{ email: string; role?: string } | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
+  const refreshAuth = async () => {
+    setCheckingAuth(true);
+    try {
+      const res = await fetch('/api/auth/me', { cache: 'no-store' });
+      const data = res.ok ? await res.json() : null;
+      setUser(data?.authenticated ? data.user : null);
+    } catch {
+      setUser(null);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.authenticated) setUser(data.user);
-      })
-      .catch(() => {})
-      .finally(() => setCheckingAuth(false));
-  }, []);
+    refreshAuth();
+  }, [pathname]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
     router.push('/');
+    router.refresh();
   };
 
   return (

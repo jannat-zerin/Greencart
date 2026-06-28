@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const getSecret = () => new TextEncoder().encode(JWT_SECRET);
 
 export interface JwtPayload extends JWTPayload {

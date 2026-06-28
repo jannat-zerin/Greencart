@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { User } from '@/lib/models/User';
 import { signJWT, setAuthCookie } from '@/lib/auth';
+import {
+  findMemoryUserByEmail,
+  isMemoryAuthEnabled,
+  toMemoryUserPayload,
+  verifyMemoryPassword,
+} from '@/lib/auth-store';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +19,37 @@ export async function POST(request: NextRequest) {
         { error: 'Email and password are required' },
         { status: 400 }
       );
+    }
+
+    if (isMemoryAuthEnabled()) {
+      const user = await findMemoryUserByEmail(email);
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Invalid email or password' },
+          { status: 401 }
+        );
+      }
+
+      const valid = await verifyMemoryPassword(user, password);
+      if (!valid) {
+        return NextResponse.json(
+          { error: 'Invalid email or password' },
+          { status: 401 }
+        );
+      }
+
+      const token = await signJWT({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      });
+
+      await setAuthCookie(token);
+
+      return NextResponse.json({
+        message: 'Logged in successfully',
+        user: toMemoryUserPayload(user),
+      });
     }
 
     await connectDB();

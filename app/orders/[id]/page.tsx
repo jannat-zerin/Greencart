@@ -13,15 +13,23 @@ interface OrderItem {
   quantity: number;
 }
 
+interface StatusEvent {
+  status: string;
+  updatedAt: string;
+}
+
 interface Order {
   id: string;
   items: OrderItem[];
   total: number;
   status: string;
+  statusHistory: StatusEvent[];
   paymentMethod: string;
   deliveryAddress: string;
   createdAt: string;
 }
+
+const statusSteps = ['pending', 'processing', 'shipped', 'delivered'];
 
 export default function OrderConfirmationPage() {
   const params = useParams();
@@ -80,6 +88,7 @@ export default function OrderConfirmationPage() {
   });
 
   const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
+  const statusIndex = Math.max(0, statusSteps.indexOf(order.status));
 
   return (
     <main className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
@@ -90,7 +99,7 @@ export default function OrderConfirmationPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Order Confirmed!</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Order Placed!</h1>
           <p className="text-slate-500">
             Thank you for your order. Your order number is <span className="font-mono text-sm text-slate-700 bg-slate-100 px-2 py-0.5 rounded">{order.id.slice(-8)}</span>
           </p>
@@ -125,6 +134,24 @@ export default function OrderConfirmationPage() {
           <div className="px-6 py-4 flex items-center justify-between text-sm">
             <span className="text-slate-500">Items</span>
             <span className="font-medium text-slate-900">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Delivery timeline</h2>
+            <span className="text-sm text-slate-500">{order.status}</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {statusSteps.map((step, index) => {
+              const active = index <= statusIndex;
+              return (
+                <div key={step} className={`rounded-lg border px-3 py-3 text-sm ${active ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                  <p className="font-semibold capitalize">{step}</p>
+                  <p className="mt-1 text-xs">{active ? 'In progress' : 'Upcoming'}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
 

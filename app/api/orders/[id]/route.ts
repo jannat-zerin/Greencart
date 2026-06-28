@@ -31,6 +31,9 @@ export async function GET(
       items: order.items,
       total: order.total,
       status: order.status,
+      statusHistory: order.statusHistory || [],
+      paymentMethod: order.paymentMethod,
+      deliveryAddress: order.deliveryAddress,
       createdAt: order.createdAt,
     });
   } catch (error) {

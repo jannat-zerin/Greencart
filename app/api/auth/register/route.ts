@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { User } from '@/lib/models/User';
+import { createMemoryUser, isMemoryAuthEnabled } from '@/lib/auth-store';
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@greencart.com')
   .split(',')
@@ -22,6 +23,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Password must be at least 6 characters' },
         { status: 400 }
+      );
+    }
+
+    if (isMemoryAuthEnabled()) {
+      const existing = await createMemoryUser({
+        email,
+        password,
+        name,
+        role: ADMIN_EMAILS.includes(email.toLowerCase()) ? 'admin' : 'user',
+      });
+
+      if (!existing) {
+        return NextResponse.json({ error: 'User already exists' }, { status: 409 });
+      }
+
+      return NextResponse.json(
+        {
+          message: 'User created successfully',
+          user: { email: existing.email, name: existing.name, role: existing.role },
+        },
+        { status: 201 }
       );
     }
 

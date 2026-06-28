@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { products } from '../data/products.js';
+import { products } from '../data/product.ts';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -18,15 +18,37 @@ async function seed() {
   await collection.deleteMany({});
   console.log('Cleared existing products');
 
-  function computeHealthiness(category) {
-    const c = category.toLowerCase();
-    if (c.includes('fruit') || c.includes('vegetable') || c.includes('herb')) return 90;
-    if (c.includes('meat') || c.includes('seafood')) return 70;
-    if (c.includes('dairy')) return 60;
-    if (c.includes('pantry') || c.includes('grains') || c.includes('pasta')) return 65;
-    if (c.includes('bakery') || c.includes('snack') || c.includes('sweets')) return 35;
-    if (c.includes('beverage')) return 60;
-    return 50;
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function computeHealthiness(product) {
+    const category = product.category?.toLowerCase() ?? '';
+    const name = product.name?.toLowerCase() ?? '';
+
+    let score = 50;
+
+    if (category.includes('fruit') || category.includes('vegetable') || category.includes('herb')) {
+      score = 88;
+    } else if (category.includes('meat') || category.includes('seafood')) {
+      score = 55;
+    } else if (category.includes('dairy')) {
+      score = 70;
+    } else if (category.includes('pantry') || category.includes('grains') || category.includes('pasta')) {
+      score = 64;
+    } else if (category.includes('bakery') || category.includes('snack') || category.includes('sweet')) {
+      score = 42;
+    } else if (category.includes('beverage')) {
+      score = 62;
+    }
+
+    if (name.includes('organic')) score += 4;
+    if (name.includes('fresh') || name.includes('whole')) score += 3;
+    if (name.includes('sweet') || name.includes('honey') || name.includes('banana')) score += 2;
+    if (name.includes('bread') || name.includes('cookie') || name.includes('cake') || name.includes('soda') || name.includes('juice')) score -= 8;
+    if (name.includes('milk') || name.includes('yogurt') || name.includes('cheese')) score += 5;
+
+    return clamp(Math.round(score), 30, 100);
   }
 
   function computePriceHonesty(price) {
@@ -44,7 +66,7 @@ async function seed() {
     image: p.image,
     category: p.category,
     description: p.description,
-    healthiness: p.healthiness ?? computeHealthiness(p.category),
+    healthiness: computeHealthiness(p),
     priceHonestyRating: p.priceHonestyRating ?? computePriceHonesty(p.price),
   }));
 

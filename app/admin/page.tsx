@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 type AdminTab = 'product' | 'feedback' | 'orders';
@@ -93,6 +93,15 @@ export default function AdminPage() {
   );
 }
 
+interface ProductItem {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  description?: string;
+}
+
 function AddProductForm() {
   const [form, setForm] = useState({
     name: '',
@@ -103,6 +112,31 @@ function AddProductForm() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  const loadProducts = async () => {
+    try {
+      const res = await fetch('/api/products');
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch {
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const resetForm = () => {
+    setForm({ name: '', price: '', image: '', category: '', description: '' });
+    setEditingProductId(null);
+  };
 
   const handleChange = (field: string) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -116,16 +150,18 @@ function AddProductForm() {
     setMessage(null);
 
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      const payload = {
+        name: form.name,
+        price: parseFloat(form.price),
+        image: form.image,
+        category: form.category,
+        description: form.description,
+      };
+
+      const res = await fetch(`/api/products${editingProductId ? `/${editingProductId}` : ''}`, {
+        method: editingProductId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          price: parseFloat(form.price),
-          image: form.image,
-          category: form.category,
-          description: form.description,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -135,8 +171,12 @@ function AddProductForm() {
         return;
       }
 
-      setMessage({ type: 'success', text: `"${data.name}" created successfully!` });
-      setForm({ name: '', price: '', image: '', category: '', description: '' });
+      setMessage({
+        type: 'success',
+        text: editingProductId ? `"${data.name}" updated successfully!` : `"${data.name}" created successfully!`,
+      });
+      resetForm();
+      await loadProducts();
     } catch {
       setMessage({ type: 'error', text: 'Failed to connect to server' });
     } finally {
@@ -144,107 +184,193 @@ function AddProductForm() {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1.5">
-          Name <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="name"
-          type="text"
-          required
-          value={form.name}
-          onChange={handleChange('name')}
-          placeholder="Organic Apples"
-          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
-        />
-      </div>
+  const startEdit = (product: ProductItem) => {
+    setEditingProductId(product.id);
+    setForm({
+      name: product.name,
+      price: String(product.price),
+      image: product.image,
+      category: product.category,
+      description: product.description || '',
+    });
+    setMessage(null);
+    window.setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
-      <div>
-        <label htmlFor="price" className="block text-sm font-medium text-slate-700 mb-1.5">
-          Price <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Tk</span>
+  return (
+    <div className="space-y-6">
+      <div ref={formRef}>
+      <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {editingProductId ? 'Edit Product' : 'Add New Product'}
+            </h2>
+            <p className="text-sm text-slate-500">
+              {editingProductId ? 'Update the product details below.' : 'Create a fresh listing for your catalog.'}
+            </p>
+          </div>
+          {editingProductId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="text-sm font-medium text-slate-500 hover:text-slate-700"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Name <span className="text-red-500">*</span>
+          </label>
           <input
-            id="price"
-            type="number"
-            step="0.01"
-            min="0.01"
+            id="name"
+            type="text"
             required
-            value={form.price}
-            onChange={handleChange('price')}
-            placeholder="2.99"
-            className="w-full rounded-lg border border-slate-300 pl-7 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
+            value={form.name}
+            onChange={handleChange('name')}
+            placeholder="Organic Apples"
+            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
           />
         </div>
-      </div>
 
-      <div>
-        <label htmlFor="image" className="block text-sm font-medium text-slate-700 mb-1.5">
-          Image URL <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="image"
-          type="url"
-          required
-          value={form.image}
-          onChange={handleChange('image')}
-          placeholder="https://images.unsplash.com/photo-..."
-          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1.5">
-          Category <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="category"
-          type="text"
-          required
-          value={form.category}
-          onChange={handleChange('category')}
-          placeholder="Fruits"
-          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1.5">
-          Description
-        </label>
-        <textarea
-          id="description"
-          rows={3}
-          value={form.description}
-          onChange={handleChange('description')}
-          placeholder="Crisp and juicy organic apples..."
-          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors resize-none"
-        />
-      </div>
-
-      {message && (
-        <div
-          className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 text-green-800 border border-green-200'
-              : 'bg-red-50 text-red-800 border border-red-200'
-          }`}
-        >
-          {message.text}
+        <div>
+          <label htmlFor="price" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Price <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">Tk</span>
+            <input
+              id="price"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              value={form.price}
+              onChange={handleChange('price')}
+              placeholder="2.99"
+              className="w-full rounded-lg border border-slate-300 pl-7 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
+            />
+          </div>
         </div>
-      )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-      >
-        {submitting ? 'Saving...' : 'Add Product'}
-      </button>
-    </form>
+        <div>
+          <label htmlFor="image" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Image URL <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="image"
+            type="url"
+            required
+            value={form.image}
+            onChange={handleChange('image')}
+            placeholder="https://images.unsplash.com/photo-..."
+            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Category <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="category"
+            type="text"
+            required
+            value={form.category}
+            onChange={handleChange('category')}
+            placeholder="Fruits"
+            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Description
+          </label>
+          <textarea
+            id="description"
+            rows={3}
+            value={form.description}
+            onChange={handleChange('description')}
+            placeholder="Crisp and juicy organic apples..."
+            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600 transition-colors resize-none"
+          />
+        </div>
+
+        {message && (
+          <div
+            className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${
+              message.type === 'success'
+                ? 'bg-green-50 text-green-800 border border-green-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+        >
+          {submitting ? 'Saving...' : editingProductId ? 'Save Changes' : 'Add Product'}
+        </button>
+      </form>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Current Products</h3>
+            <p className="text-sm text-slate-500">Edit any existing listing in one click.</p>
+          </div>
+        </div>
+
+        {loadingProducts ? (
+          <div className="flex items-center justify-center py-8">
+            <svg className="h-5 w-5 animate-spin text-green-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+            No products yet. Add your first one above.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                onClick={() => startEdit(product)}
+                className="flex cursor-pointer flex-col gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-green-300 hover:bg-green-50/60 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-semibold text-slate-900">{product.name}</p>
+                  <p className="text-sm text-slate-500">{product.category} • {product.price} Tk</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    startEdit(product);
+                  }}
+                  className="relative z-10 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
+                >
+                  Edit
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -345,12 +471,18 @@ interface OrderItem {
   quantity: number;
 }
 
+interface OrderStatusEvent {
+  status: string;
+  updatedAt: string;
+}
+
 interface Order {
   id: string;
   userId: string;
   items: OrderItem[];
   total: number;
   status: string;
+  statusHistory: OrderStatusEvent[];
   paymentMethod: string;
   deliveryAddress: string;
   createdAt: string;
@@ -360,25 +492,53 @@ function OrdersList() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  const loadOrders = async () => {
+    try {
+      const res = await fetch('/api/admin/orders');
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to load orders');
+        return;
+      }
+      setOrders(data.orders || []);
+    } catch {
+      setError('Failed to connect to server');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        const res = await fetch('/api/admin/orders');
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'Failed to load orders');
-          return;
-        }
-        setOrders(data.orders || []);
-      } catch {
-        setError('Failed to connect to server');
-      } finally {
-        setLoading(false);
-      }
-    };
     loadOrders();
   }, []);
+
+  const handleStatusChange = async (orderId: string, status: string) => {
+    setUpdatingOrderId(orderId);
+    try {
+      const res = await fetch('/api/admin/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to update order');
+        return;
+      }
+      setOrders((prev) => prev.map((order) =>
+        order.id === orderId
+          ? { ...order, status: data.order.status, statusHistory: data.order.statusHistory || order.statusHistory }
+          : order
+      ));
+      setError(null);
+    } catch {
+      setError('Failed to update order status');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -410,8 +570,8 @@ function OrdersList() {
   return (
     <div className="space-y-4">
       {orders.map((order) => (
-        <div key={order.id} className="rounded-xl border border-slate-200 bg-white p-5">
-          <div className="flex items-center justify-between mb-3">
+        <div key={order.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
             <span className="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
               #{order.id.slice(-8)}
             </span>
@@ -432,15 +592,46 @@ function OrdersList() {
               </div>
             ))}
           </div>
-          <div className="border-t border-slate-100 pt-2 flex justify-between items-center">
-            <span className="text-xs text-slate-400">
-              {new Date(order.createdAt).toLocaleDateString('en-US', {
-                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-              })}
-            </span>
-            <span className="font-bold text-slate-900">{Math.round(order.total)} Tk</span>
+          <div className="border-t border-slate-100 pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <label htmlFor={`status-${order.id}`} className="text-sm text-slate-600">Update status</label>
+              <select
+                id={`status-${order.id}`}
+                value={order.status}
+                onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                disabled={updatingOrderId === order.id}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600"
+              >
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-400">
+                {new Date(order.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                })}
+              </p>
+              <p className="font-bold text-slate-900">{Math.round(order.total)} Tk</p>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-1">{order.deliveryAddress}</p>
+          <p className="text-xs text-slate-400 mt-2">{order.deliveryAddress}</p>
+          {order.statusHistory && order.statusHistory.length > 0 && (
+            <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              <p className="mb-1 font-semibold uppercase tracking-wider text-slate-400">Timeline</p>
+              <div className="space-y-1">
+                {order.statusHistory.slice().reverse().map((event, index) => (
+                  <div key={`${event.status}-${index}`} className="flex items-center justify-between gap-3">
+                    <span className="capitalize">{event.status}</span>
+                    <span>{new Date(event.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>
