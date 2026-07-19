@@ -38,6 +38,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (user.status === 'blocked') {
+        return NextResponse.json({ error: 'Your account has been blocked by an administrator' }, { status: 403 });
+      }
+
       const token = await signJWT({
         id: user.id,
         email: user.email,
@@ -68,6 +72,10 @@ export async function POST(request: NextRequest) {
         { error: 'Invalid email or password' },
         { status: 401 }
       );
+    }
+
+    if (user.status === 'blocked') {
+      return NextResponse.json({ error: 'Your account has been blocked by an administrator' }, { status: 403 });
     }
 
     const token = await signJWT({

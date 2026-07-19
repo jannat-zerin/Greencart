@@ -45,6 +45,7 @@ export async function GET() {
       role: user.role,
       phone: user.phone,
       address: user.address,
+      status: user.status || 'active',
     },
   });
 }

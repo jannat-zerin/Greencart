@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
-type AdminTab = 'product' | 'feedback' | 'orders';
+type AdminTab = 'product' | 'feedback' | 'orders' | 'users';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -70,6 +70,7 @@ export default function AdminPage() {
             { key: 'product' as AdminTab, label: 'Add Product' },
             { key: 'feedback' as AdminTab, label: 'Feedback' },
             { key: 'orders' as AdminTab, label: 'Orders' },
+            { key: 'users' as AdminTab, label: 'Users & Admins' },
           ].map((t) => (
             <button
               key={t.key}
@@ -88,6 +89,7 @@ export default function AdminPage() {
         {tab === 'product' && <AddProductForm />}
         {tab === 'feedback' && <FeedbackList />}
         {tab === 'orders' && <OrdersList />}
+        {tab === 'users' && <UsersAdminPanel />}
       </div>
     </main>
   );
@@ -634,6 +636,148 @@ function OrdersList() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function UsersAdminPanel() {
+  const router = useRouter();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/users')
+      .then((res) => res.json())
+      .then((data) => setUsers(Array.isArray(data.users) ? data.users : []))
+      .catch(() => setUsers([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const updateUser = async (userId: string, action: 'block' | 'unblock' | 'promote' | 'demote') => {
+    setBusyId(userId);
+    setMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: 'error', text: data.error || 'Unable to update user' });
+        return;
+      }
+
+      setUsers((current) => current.map((user) => (user.id === userId ? { ...user, ...data.user } : user)));
+      setMessage({ type: 'success', text: `User ${action}d successfully.` });
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to update user' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const admins = users.filter((user) => user.role === 'admin');
+  const regularUsers = users.filter((user) => user.role === 'user');
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Users and admin access</h2>
+            <p className="text-sm text-slate-500">Block or unblock users, and promote or demote admins.</p>
+          </div>
+          <button
+            onClick={() => router.push('/admin/users')}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-green-600 hover:text-green-700"
+          >
+            Open full page
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${message.type === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-slate-900">Admins</h3>
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading...</p>
+        ) : admins.length === 0 ? (
+          <p className="text-sm text-slate-500">No admins yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {admins.map((user) => (
+              <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+                <div>
+                  <p className="font-medium text-slate-900">{user.name || user.email}</p>
+                  <p className="text-sm text-slate-500">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => updateUser(user.id, 'demote')}
+                  disabled={busyId === user.id}
+                  className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                >
+                  Remove admin
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-slate-900">Users</h3>
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading...</p>
+        ) : regularUsers.length === 0 ? (
+          <p className="text-sm text-slate-500">No users yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {regularUsers.map((user) => (
+              <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+                <div>
+                  <p className="font-medium text-slate-900">{user.name || user.email}</p>
+                  <p className="text-sm text-slate-500">{user.email}</p>
+                </div>
+                <div className="flex gap-2">
+                  {user.status === 'blocked' ? (
+                    <button
+                      onClick={() => updateUser(user.id, 'unblock')}
+                      disabled={busyId === user.id}
+                      className="rounded-lg border border-green-200 px-3 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50 disabled:opacity-60"
+                    >
+                      Unblock
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => updateUser(user.id, 'block')}
+                      disabled={busyId === user.id}
+                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                    >
+                      Block
+                    </button>
+                  )}
+                  <button
+                    onClick={() => updateUser(user.id, 'promote')}
+                    disabled={busyId === user.id}
+                    className="rounded-lg border border-green-200 px-3 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50 disabled:opacity-60"
+                  >
+                    Make admin
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ type MemoryUser = {
   role: 'user' | 'admin';
   phone: string;
   address: string;
+  status?: 'active' | 'blocked';
   resetToken?: string;
   resetTokenExpires?: Date;
   createdAt: Date;
@@ -39,6 +40,7 @@ export async function createMemoryUser(input: {
     role: input.role || 'user',
     phone: '',
     address: '',
+    status: 'active',
     createdAt: new Date(),
   };
 
@@ -48,6 +50,14 @@ export async function createMemoryUser(input: {
 
 export async function findMemoryUserByEmail(email: string) {
   return memoryUsers.get(normalizeEmail(email)) ?? null;
+}
+
+export async function findMemoryUserById(id: string) {
+  return Array.from(memoryUsers.values()).find((user) => user.id === id) ?? null;
+}
+
+export function listMemoryUsers() {
+  return Array.from(memoryUsers.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function verifyMemoryPassword(user: MemoryUser, password: string) {
@@ -96,5 +106,6 @@ export function toMemoryUserPayload(user: MemoryUser) {
     role: user.role,
     phone: user.phone,
     address: user.address,
+    status: user.status || 'active',
   };
 }
