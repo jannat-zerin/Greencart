@@ -20,6 +20,7 @@ export interface IOrder extends Document {
   statusHistory: IOrderStatusEvent[];
   paymentMethod: 'cash' | 'bkash';
   deliveryAddress: string;
+  customerName: string;
   userId?: string;
   createdAt: Date;
 }
@@ -51,6 +52,7 @@ const OrderSchema = new Schema<IOrder>(
     statusHistory: { type: [OrderStatusEventSchema], default: [] },
     paymentMethod: { type: String, enum: ['cash', 'bkash'], required: true, default: 'cash' },
     deliveryAddress: { type: String, default: '' },
+    customerName: { type: String, default: '' },
     userId: { type: String, index: true, default: null },
   },
   { timestamps: true }

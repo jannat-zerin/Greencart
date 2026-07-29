@@ -30,6 +30,7 @@ export async function GET() {
       statusHistory: o.statusHistory || [],
       paymentMethod: o.paymentMethod,
       deliveryAddress: o.deliveryAddress,
+      customerName: o.customerName || '',
       createdAt: o.createdAt,
     }));
 
@@ -87,6 +88,7 @@ export async function PATCH(request: NextRequest) {
         statusHistory: order.statusHistory,
         paymentMethod: order.paymentMethod,
         deliveryAddress: order.deliveryAddress,
+        customerName: order.customerName || '',
         createdAt: order.createdAt,
       },
     });

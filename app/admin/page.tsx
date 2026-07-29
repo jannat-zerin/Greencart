@@ -487,6 +487,7 @@ interface Order {
   statusHistory: OrderStatusEvent[];
   paymentMethod: string;
   deliveryAddress: string;
+  customerName: string;
   createdAt: string;
 }
 
@@ -620,7 +621,11 @@ function OrdersList() {
               <p className="font-bold text-slate-900">{Math.round(order.total)} Tk</p>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2">{order.deliveryAddress}</p>
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Customer</p>
+            <p className="text-sm font-medium text-slate-900">{order.customerName || 'Customer'}</p>
+            <p className="text-xs text-slate-500 mt-1">{order.deliveryAddress || 'No delivery address provided'}</p>
+          </div>
           {order.statusHistory && order.statusHistory.length > 0 && (
             <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
               <p className="mb-1 font-semibold uppercase tracking-wider text-slate-400">Timeline</p>

@@ -6,7 +6,7 @@ import { getSession } from '@/lib/auth';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, total, paymentMethod, deliveryAddress } = body;
+    const { items, total, paymentMethod, deliveryAddress, customerName } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       statusHistory: [{ status: 'pending', updatedAt: new Date() }],
       paymentMethod,
       deliveryAddress: deliveryAddress.trim(),
+      customerName: typeof customerName === 'string' ? customerName.trim() : '',
       userId: session.id,
     });
 
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
         statusHistory: order.statusHistory,
         paymentMethod: order.paymentMethod,
         deliveryAddress: order.deliveryAddress,
+        customerName: order.customerName,
         createdAt: order.createdAt,
       },
       { status: 201 }

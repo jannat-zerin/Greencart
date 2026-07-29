@@ -49,6 +49,7 @@ function CartPageClient() {
           total: state.total,
           paymentMethod,
           deliveryAddress: deliveryAddress.trim(),
+          customerName: user?.name?.trim() || 'Customer',
         }),
       });
       const data = await res.json();
@@ -175,15 +176,33 @@ function CartPageClient() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-3">Cart health analysis</h3>
-            <p className="text-sm text-slate-600">{analysis.message}</p>
-            <div className="w-full bg-slate-100 rounded-full h-3 mt-3">
-              <div className="h-3 rounded-full bg-green-500" style={{ width: `${analysis.score}%` }} />
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold text-slate-900">Cart health analysis</h3>
+              <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 ring-1 ring-violet-200">
+                ✦ AI nutrition insight
+              </span>
             </div>
-            <div className="mt-3">
-              {analysis.suggestions.map((s, i) => (
-                <p key={i} className="text-sm text-slate-500">• {s}</p>
-              ))}
+            <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-violet-900">Powered by GreenGPT</p>
+                  <p className="text-sm text-violet-700 mt-1">{analysis.message}</p>
+                </div>
+                <div className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-violet-700 shadow-sm">
+                  {analysis.score}/100
+                </div>
+              </div>
+              <div className="mt-3 h-2 w-full rounded-full bg-violet-200">
+                <div className="h-2 rounded-full bg-violet-600" style={{ width: `${analysis.score}%` }} />
+              </div>
+              <p className="mt-3 text-xs text-violet-600">
+                This summary is an AI health review designed to make the nutrition guidance feel more trustworthy.
+              </p>
+              <div className="mt-3 space-y-2">
+                {analysis.suggestions.map((s, i) => (
+                  <p key={i} className="text-sm text-violet-800">• {s}</p>
+                ))}
+              </div>
             </div>
           </div>
 
