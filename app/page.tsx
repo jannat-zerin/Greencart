@@ -6,6 +6,7 @@ import Image from "next/image";
 
 import { siteConfig } from "@/lib/site";
 import { useCart } from "@/contexts/CartContext";
+import { getPriceDisplay } from "@/lib/product-display";
 
 const features = [
   {
@@ -141,7 +142,7 @@ export default function Home() {
                   const isBanana = product.name === 'Fresh Bananas';
                   const isSpinach = product.name === 'Spinach';
 
-                  const currentPrice = isBanana ? 20 : Math.floor(product.price);
+                  const { formattedPrice } = getPriceDisplay(product);
                   const currentHealth = (isApple || isBanana) ? 90 : (isSpinach ? 90 : product.healthiness);
                   const currentRating = isSpinach ? 3 : 4;
 
@@ -177,7 +178,7 @@ export default function Home() {
 
                         <p className={`font-semibold text-slate-900 truncate group-hover:text-green-700 transition-colors ${i === 0 ? 'text-lg' : 'text-sm'}`}>{product.name}</p>
                         <div className="flex items-center justify-between pt-1">
-                          <p className="font-bold text-green-600">{currentPrice} Tk</p>
+                          <p className="font-bold text-green-600">{formattedPrice}</p>
                           <button
                             onClick={(e) => handleAddToCart(e, product)}
                             className="bg-green-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors active:scale-95 flex items-center gap-1 shadow-sm"

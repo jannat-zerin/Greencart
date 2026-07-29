@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { ProductDetailSkeleton } from '@/components/Skeleton';
+import { getPriceDisplay } from '@/lib/product-display';
 
 interface Product {
   id: number;
@@ -134,6 +135,7 @@ export default function ProductPage() {
   const averageRating = reviews.length
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null;
+  const { formattedPrice } = getPriceDisplay(product);
 
   return (
     <main className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
@@ -166,7 +168,7 @@ export default function ProductPage() {
               {product.category}
             </span>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">{product.name}</h1>
-            <p className="text-2xl sm:text-3xl font-bold text-green-600">{Math.round(product.price)} Tk</p>
+            <p className="text-2xl sm:text-3xl font-bold text-green-600">{formattedPrice}</p>
             {typeof product.healthiness === 'number' && (
               <p className="text-sm text-slate-500 mt-1">Healthiness: {product.healthiness}%</p>
             )}

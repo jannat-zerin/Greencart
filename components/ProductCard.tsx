@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
+import { getPriceDisplay } from '@/lib/product-display';
 
 interface Product {
   id: number;
@@ -28,7 +29,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const isBanana = product.name === 'Fresh Bananas';
   const isSpinach = product.name === 'Spinach';
 
-  const displayPrice = isBanana ? 20 : Math.floor(product.price);
+  const { formattedPrice } = getPriceDisplay(product);
   const displayHealth = (isApple || isBanana || isSpinach) ? 90 : product.healthiness;
   const displayRating = isSpinach ? 3 : 4;
 
@@ -65,7 +66,7 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.name}
           </h3>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-lg sm:text-xl font-bold text-green-600">{displayPrice} Tk</p>
+            <p className="text-lg sm:text-xl font-bold text-green-600">{formattedPrice}</p>
             <button
               onClick={handleAddToCart}
               className="flex items-center gap-1.5 bg-green-600 text-white text-sm font-semibold px-3 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm active:scale-95"
